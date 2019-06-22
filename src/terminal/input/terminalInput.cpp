@@ -374,25 +374,16 @@ bool TerminalInput::HandleKey(const IInputEvent* const pInEvent) const
         // Only need to handle key down. See raw key handler (see RawReadWaitRoutine in stream.cpp)
         if (keyEvent.IsKeyDown())
         {
-            // For AltGr enabled keyboards, the Windows system will
-            // emit Left Ctrl + Right Alt as the modifier keys and
-            // will have pretranslated the UnicodeChar to the proper
-            // alternative value.
-            // Through testing with Ubuntu, PuTTY, and Emacs for
-            // Windows, it was discovered that any instance of Left
-            // Ctrl + Right Alt will strip out those two modifiers and
-            // send the unicode value straight through to the system.
-            // Holding additional modifiers in addition to Left Ctrl +
-            // Right Alt will then light those modifiers up again for
-            // the unicode value.
-            // Therefore to handle AltGr properly, our first step
-            // needs to be to check if both Left Ctrl + Right Alt are
-            // pressed...
-            // ... and if they are both pressed, strip them out of the control key state.
-            if (keyEvent.IsAltGrPressed())
+            // AltGr key combinations don't always contain any meaningful,
+            // pretranslated unicode character during WM_KEYDOWN.
+            // E.g. on a German keyboard AltGr+Q should result in the "@" character,
+            // but actually results in "Q" with Alt and Ctrl modifier states.
+            // By returning false though, we can abort handling this WM_KEYDOWN
+            // event and let the WM_CHAR handler kick in, which will be
+            // provided with an appropriate unicode character.
+            if (keyEvent.IsAltPressed() && keyEvent.IsCtrlPressed())
             {
-                keyEvent.DeactivateModifierKey(ModifierKeyState::LeftCtrl);
-                keyEvent.DeactivateModifierKey(ModifierKeyState::RightAlt);
+                return false;
             }
 
             if (keyEvent.IsAltPressed() &&
